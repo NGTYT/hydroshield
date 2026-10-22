@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HydroShield — 2D Animated Explainer</title>
+<style>
+:root{--bg:#f1f5f9;--fg:#0f172a;--card:#fff;--mut:#475569;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#020617;--fg:#e2e8f0;--card:#0f172a;--mut:#94a3b8}}
+:root[data-theme="dark"]{--bg:#020617;--fg:#e2e8f0;--card:#0f172a;--mut:#94a3b8}
+html,body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:10px}
+h1{font-size:16px;margin:4px 0 8px;letter-spacing:.5px}
+#stage{background:#0b1220;border-radius:12px;overflow:hidden;aspect-ratio:16/9;position:relative;border:1px solid #1e3a5f}
+#stage svg{width:100%;height:100%;display:block}
+svg text{font-family:system-ui,sans-serif}
+#cap{background:var(--card);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:14px;line-height:1.4;min-height:3em}
+#bar{height:4px;background:#1e293b;border-radius:2px;margin-top:8px;overflow:hidden}
+#bar i{display:block;height:100%;width:0;background:#38bdf8}
+.ctl{display:flex;gap:6px;margin-top:8px;align-items:center;flex-wrap:wrap}
+button{background:var(--card);color:var(--fg);border:1px solid #334155;border-radius:8px;padding:8px 12px;font-size:14px;cursor:pointer}
+#dots{display:flex;gap:5px;margin-left:auto}
+#dots b{width:9px;height:9px;border-radius:50%;background:#334155;cursor:pointer}
+#dots b.on{background:#38bdf8}
+.pop{opacity:0;animation:pop .6s forwards}@keyframes pop{to{opacity:1}}
+.wire{fill:none;stroke-width:3;stroke-linecap:round;stroke-dasharray:700;stroke-dashoffset:700;animation:dr 1.4s forwards}@keyframes dr{to{stroke-dashoffset:0}}
+.fly{opacity:0;animation:fly 1.1s cubic-bezier(.2,.8,.2,1) forwards}@keyframes fly{from{opacity:0;transform:translate(var(--x),var(--y))}to{opacity:1;transform:none}}
+.wave{animation:wv 3s ease-in-out infinite alternate}@keyframes wv{to{transform:translateX(-30px)}}
+.blink{animation:bl 1s infinite}@keyframes bl{50%{opacity:.3}}
+.paused *{animation-play-state:paused!important}
+</style></head><body><div class="wrap">
+<h1>💧 HYDROSHIELD — Smart IoT Water Quality Monitor (2D Animation)</h1>
+<div id="stage"></div>
+<div id="bar"><i id="pb"></i></div>
+<div id="cap"></div>
+<div class="ctl"><button id="prev">⏮</button><button id="pp">⏸ Pause</button><button id="next">⏭</button><button id="rep">↻</button><div id="dots"></div></div>
+</div>
+<script>
+const R=(x,y,w,h,t,c='#1e3a5f',d=0,fs=12,s='#7dd3fc')=>`<g class="pop" style="animation-delay:${d}s"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="6" fill="${c}" stroke="${s}"/><text x="${x+w/2}" y="${y+h/2+4}" text-anchor="middle" font-size="${fs}" fill="#fff">${t}</text></g>`;
+const T=(x,y,t,c='#cbd5e1',fs=12,d=0,a='middle')=>`<text class="pop" style="animation-delay:${d}s" x="${x}" y="${y}" text-anchor="${a}" font-size="${fs}" fill="${c}">${t}</text>`;
+const W=(p,c,d=0)=>`<path class="wire" d="${p}" stroke="${c}" style="animation-delay:${d}s"/>`;
+const svg=b=>`<svg viewBox="0 0 800 450" xmlns="http://www.w3.org/2000/svg">${b}</svg>`;
+const GR='#22c55e',BL='#3b82f6',YE='#facc15',RD='#ef4444',BK='#94a3b8',OR='#fb923c';
+let timers=[];const tm=(f,ms)=>timers.push(setInterval(f,ms));
+
+const S=[
+{d:7000,sub:'Meet HydroShield: four sensors, an ADS1115 ADC, an Arduino Uno, a NodeMCU ESP8266 and a website dashboard working together.',
+ draw:()=>svg(`<text x="400" y="170" text-anchor="middle" font-size="54" font-weight="700" fill="#38bdf8" class="pop">HYDROSHIELD</text>`+T(400,205,'SMART IoT WATER QUALITY MONITORING SYSTEM','#e2e8f0',16,.6)+T(400,240,'MEASURE • MONITOR • CONNECT','#7dd3fc',14,1.2)+
+ ['pH','TDS','Turbidity','DS18B20'].map((n,i)=>R(130+i*140,290,120,40,n,'#0e7490',1.6+i*.3)).join('')+T(400,370,'hydroshield2.vercel.app','#94a3b8',13,2.6))},
+{d:13000,sub:'Scene 1 — Four sensors sit in the water sample: pH, TDS (conductivity), turbidity (light scattering) and the waterproof DS18B20 for temperature. Values shown are illustrative demo values, not real measurements.',
+ draw:()=>svg(`<path d="M80 130V390Q80 410 100 410H300Q320 410 320 390V130" fill="none" stroke="#7dd3fc" stroke-width="3"/>
+ <clipPath id="c"><rect x="82" y="210" width="236" height="200"/></clipPath><g clip-path="url(#c)"><path class="wave" d="M40 220q30-14 60 0t60 0t60 0t60 0t60 0t60 0t60 0V420H40z" fill="#0ea5e9" opacity=".55"/></g>`+
+ [['pH',120],['TDS',180],['NTU',240],['DS18B20',290]].map(([n,x],i)=>`<g class="pop" style="animation-delay:${.4+i*.4}s"><rect x="${x-6}" y="60" width="12" height="230" rx="4" fill="#475569"/><text x="${x}" y="50" text-anchor="middle" font-size="11" fill="#e2e8f0">${n}</text></g>`).join('')+
+ `<g class="pop" style="animation-delay:2.4s"><path d="M215 330h50M215 345h50M215 360h50" stroke="#facc15" stroke-dasharray="4 4"/><text x="240" y="385" text-anchor="middle" font-size="10" fill="#facc15">light scatter</text></g>`+
+ [['pH','7.20',''],['TDS','280',' ppm'],['Turbidity','1.50',' NTU'],['Temp','28.5',' °C']].map(([a,b,c],i)=>`<g class="pop" style="animation-delay:${2.8+i*.7}s"><rect x="440" y="${90+i*68}" width="320" height="54" rx="8" fill="#0f172a" stroke="#38bdf8"/><text x="460" y="${123+i*68}" font-size="15" fill="#94a3b8">${a}</text><text x="740" y="${125+i*68}" text-anchor="end" font-size="24" font-weight="700" fill="#e2e8f0">${b}${c}</text></g>`).join(''))},
+{d:12000,sub:'Scene 2 — Exploded-view assembly: every component flies into its place on the prototype board. No substitutions, no invented parts.',
+ draw:()=>{const n=['Arduino Uno R3','ADS1115 ADC','NodeMCU ESP8266','2.4" TFT display','pH module','TDS module','Turbidity module','DS18B20 probe','RGB status LED','Power + wires'];
+ return svg(`<rect x="20" y="60" width="760" height="340" rx="12" fill="#064e3b" stroke="#10b981" stroke-width="2"/>`+T(400,45,'Prototype PCB','#6ee7b7',13)+
+ n.map((t,i)=>{const x=40+(i%5)*146,y=90+Math.floor(i/5)*150;return `<g class="fly" style="--x:${(i%2?1:-1)*420}px;--y:${(i<5?-1:1)*300}px;animation-delay:${i*.7}s"><rect x="${x}" y="${y}" width="132" height="90" rx="8" fill="#1e3a5f" stroke="#7dd3fc"/><text x="${x+66}" y="${y+50}" text-anchor="middle" font-size="12" fill="#fff">${t}</text></g>`}).join(''))}},
+{d:15000,sub:'Scene 3A — Analog sensors go to ADS1115 A0, A1, A2. The ADS1115 talks I²C to the Arduino: SDA → A4, SCL → A5. A0–A2 are ADC inputs; A4/A5 are the I²C pins. Check every sensor output stays within the ADC input limit.',
+ draw:()=>svg(
+ R(20,115,110,40,'pH sensor','#334155',0)+R(20,165,110,40,'TDS sensor','#334155',.2)+R(20,215,110,40,'Turbidity','#334155',.4)+
+ R(300,100,130,200,'ADS1115','#1e3a5f',.6,14)+R(560,100,200,200,'Arduino Uno','#0e7490',.8,14)+
+ W('M130 135H300',GR,1.2)+W('M130 185H300',GR,2.4)+W('M130 235H300',GR,3.6)+
+ T(215,128,'pH OUT → A0',GR,10,1.4)+T(215,178,'TDS OUT → A1',GR,10,2.6)+T(215,228,'TURB OUT → A2',GR,10,3.8)+
+ W('M430 165H560',BL,5)+W('M430 215H560',BL,6)+T(495,158,'SDA → A4',BL,10,5.2)+T(495,208,'SCL → A5',BL,10,6.2)+
+ W('M365 100V70H660V100',RD,7)+W('M365 300V335H660V300',BK,8)+T(515,64,'Compatible supply (verify)',RD,10,7.2)+T(515,352,'Common GND',BK,10,8.2)+
+ T(400,405,'Verify: sensor outputs ≤ ADS1115 limit (VDD + 0.3 V)','#facc15',12,9))},
+{d:16000,sub:'Scene 3B — DS18B20 DATA → D2 with a 4.7 kΩ pull-up to VDD. Identify the TFT controller first: SPI or parallel. Arduino TX goes through a divider / level shifter to the NodeMCU RX.',
+ draw:()=>svg(R(30,90,170,220,'Arduino Uno','#0e7490',0,14)+R(330,35,140,48,'DS18B20','#334155',.4)+R(500,40,100,38,'4.7 kΩ','#7c2d12',.8,12,OR)+
+ R(330,130,140,90,'2.4" TFT<tspan x="400" dy="16">verify controller</tspan>','#334155',1.2)+R(330,262,130,44,'Divider / shifter','#7c2d12',2,11,OR)+R(620,240,150,90,'NodeMCU ESP8266','#1e3a5f',2.4,13)+
+ W('M200 120H330V59',OR,1)+T(265,112,'DATA → D2',OR,10,1.2)+W('M470 59H500',RD,1.8)+
+ W('M200 170H330',BL,2.6)+T(265,162,'SPI/parallel per model','#93c5fd',10,2.8)+
+ W('M200 285H330',YE,3.4)+W('M460 285H620',YE,4)+T(265,277,'TX (5 V)',YE,10,3.6)+T(540,277,'3.3 V → RX',YE,10,4.2)+W('M200 300H300V330H620V320',BK,5)+T(460,350,'Common GND',BK,10,5.2)+
+ `<g class="pop" style="animation-delay:6s"><rect x="60" y="385" width="680" height="40" rx="8" fill="#7f1d1d" stroke="${RD}"/><text x="400" y="410" text-anchor="middle" font-size="13" font-weight="700" fill="#fff">ESP8266 GPIO USES 3.3V LOGIC. NEVER APPLY 5V DIRECTLY TO ITS GPIO PINS.</text></g>`)},
+{d:14000,sub:'Scene 4 — One measurement cycle. The code below is illustrative only; calibration equations must match your actual sensor modules.',
+ draw:()=>{const L=['// ILLUSTRATIVE — calibrate for your modules','ads.begin(); ads.setGain(GAIN_ONE);','v = ads.readADC_SingleEnded(0) * lsb;','ph = slope * v + offset;   // calibrate','tds = tdsFromVoltage(v1, tempC);','if (!valid(ph,tds,ntu,t)) status="ERROR";','tft.update(); Serial.println(json);'];
+ const st=['1 Read sensor voltages','2 Convert (calibrated)','3 Validate readings','4 Compute status','5 Update TFT','6 Send to NodeMCU'];
+ return svg(`<rect x="20" y="40" width="470" height="370" rx="10" fill="#0f172a" stroke="#334155"/>`+L.map((l,i)=>T(36,80+i*44,l,i?'#a5f3fc':'#64748b',13,.4+i*.5,'start')).join('')+
+ st.map((s,i)=>R(520,50+i*58,260,44,s,'#1e3a5f',1+i*1.8,13)).join(''))}},
+{d:13000,sub:'Scene 5 — Arduino → serial → NodeMCU → Wi-Fi router → internet → website. The POST must go to your backend’s real, configured endpoint with compatible authentication — none is invented here. Failed uploads are retried.',
+ draw:()=>svg(['Arduino','NodeMCU','Router','Internet','Website'].map((n,i)=>R(20+i*155,120,110,56,n,i==4?'#0e7490':'#1e3a5f',i*.4,13)).join('')+
+ `<path d="M130 148H175M285 148H330M440 148H485M595 148H640" stroke="#38bdf8" stroke-width="2"/>`+
+ [0,1,2].map(i=>`<circle r="6" fill="#facc15"><animateMotion dur="4s" begin="${i*1.3}s" repeatCount="indefinite" path="M75 148H715"/></circle>`).join('')+
+ T(230,110,'Serial','#94a3b8',11)+T(385,110,'Wi-Fi','#94a3b8',11)+T(540,110,'HTTP POST','#94a3b8',11)+
+ `<g class="pop" style="animation-delay:1.5s"><rect x="230" y="215" width="340" height="150" rx="10" fill="#0f172a" stroke="#334155"/><text x="250" y="245" font-size="13" fill="#a5f3fc" font-family="monospace">{ "ph": 7.20, "tds": 280,</text><text x="250" y="270" font-size="13" fill="#a5f3fc" font-family="monospace">  "turbidity": 1.50,</text><text x="250" y="295" font-size="13" fill="#a5f3fc" font-family="monospace">  "temperature": 28.5,</text><text x="250" y="320" font-size="13" fill="#a5f3fc" font-family="monospace">  "status": "SAFE" }</text><text x="250" y="350" font-size="11" fill="#facc15">illustrative data only</text></g>`+
+ T(400,400,'Wi-Fi drops → reconnect → retry upload','#fb923c',12,4))},
+{d:20000,sub:'Scenes 6–8 — Website cards and the TFT show the same readings. Green = SAFE, yellow = CAUTION, red = NOT SAFE. A failed sensor never reports SAFE. These four readings alone do not certify drinking-water safety.',
+ draw:()=>svg(`<rect x="20" y="30" width="500" height="390" rx="10" fill="#0f172a" stroke="#334155"/>`+T(40,58,'HydroShield Dashboard','#e2e8f0',14,0,'start')+T(500,58,'● ONLINE','#22c55e',11,0,'end')+
+ ['pH','TDS ppm','Turbidity NTU','Temp °C'].map((n,i)=>`<g><rect x="${40+(i%2)*235}" y="${75+Math.floor(i/2)*85}" width="215" height="72" rx="8" fill="#1e293b"/><text x="${52+(i%2)*235}" y="${98+Math.floor(i/2)*85}" font-size="12" fill="#94a3b8">${n}</text><text id="v${i}" x="${52+(i%2)*235}" y="${132+Math.floor(i/2)*85}" font-size="28" font-weight="700" fill="#e2e8f0">–</text></g>`).join('')+
+ `<polyline id="ch" points="" fill="none" stroke="#38bdf8" stroke-width="2.5"/><text x="40" y="410" font-size="11" fill="#64748b">time-series (demo)</text>`+
+ `<rect x="550" y="30" width="230" height="390" rx="10" fill="#111" stroke="#7dd3fc" stroke-width="2"/><rect id="sb" x="562" y="42" width="206" height="366" rx="6" fill="#166534"/>`+
+ T(665,75,'HYDROSHIELD','#fff',15)+T(665,95,'WATER QUALITY MONITOR','#fff',10)+
+ [0,1,2,3].map(i=>`<text id="t${i}" x="580" y="${140+i*34}" font-size="17" fill="#fff"></text>`).join('')+
+ `<text id="st" x="665" y="330" text-anchor="middle" font-size="24" font-weight="700" fill="#fff"></text><text x="665" y="390" text-anchor="middle" font-size="12" fill="#fff">Wi-Fi: CONNECTED</text>`),
+ on:()=>{const D=[['SAFE','#166534',[7.2,280,1.5,28.5]],['CAUTION','#a16207',[8.9,540,4.2,31]],['NOT SAFE','#b91c1c',[9.6,1200,12,35]],['SENSOR ERROR','#475569',['ERR',280,1.5,28.5]]],U=['','ppm','NTU','°C'],N=['pH','TDS','Turb','Temp'];let k=0,h=[];
+ const up=()=>{const[s,c,v]=D[k%4];k++;document.getElementById('sb').setAttribute('fill',c);document.getElementById('st').textContent=(s=='SENSOR ERROR'?'':'STATUS: ')+s;
+ v.forEach((x,i)=>{document.getElementById('v'+i).textContent=x;document.getElementById('t'+i).textContent=N[i]+': '+x+' '+U[i]});
+ h.push(typeof v[1]=='number'?v[1]:300);if(h.length>8)h.shift();document.getElementById('ch').setAttribute('points',h.map((y,i)=>`${60+i*60},${300-Math.min(y,1200)/6}`).join(' '))};up();tm(up,4500)}},
+{d:12000,sub:'Scene 9 — Automatic monitoring: a new record is uploaded every 10 minutes (a configurable software setting). Readings are validated before upload, and Wi-Fi loss triggers an automatic reconnect.',
+ draw:()=>svg(`<line x1="60" y1="200" x2="740" y2="200" stroke="#475569" stroke-width="3"/>`+
+ ['00:00','10:00','20:00','30:00'].map((t,i)=>`<g class="pop" style="animation-delay:${i*1.8}s"><circle cx="${100+i*200}" cy="200" r="12" fill="#38bdf8"/><text x="${100+i*200}" y="170" text-anchor="middle" font-size="15" fill="#e2e8f0">${t}</text><text x="${100+i*200}" y="240" text-anchor="middle" font-size="11" fill="#94a3b8">${['measure','upload #1','upload #2','charts updated'][i]}</text></g>`).join('')+
+ R(250,290,300,44,'Wi-Fi lost ✕ → reconnected ✓','#7c2d12',8,13,OR)+T(400,380,'Failed sensor or invalid value → ERROR, never SAFE','#facc15',13,9.5))},
+{d:9000,sub:'HydroShield — measure, monitor, connect.',
+ draw:()=>svg(`<text x="400" y="190" text-anchor="middle" font-size="56" font-weight="700" fill="#38bdf8" class="pop">HYDROSHIELD</text>`+T(400,230,'SMART IoT WATER QUALITY MONITORING SYSTEM','#e2e8f0',16,.8)+T(400,265,'MEASURE • MONITOR • CONNECT','#7dd3fc',14,1.6)+T(400,320,'hydroshield2.vercel.app','#94a3b8',13,2.4))}
+];
+const st=document.getElementById('stage'),cap=document.getElementById('cap'),pb=document.getElementById('pb'),dots=document.getElementById('dots'),pp=document.getElementById('pp');
+let i=0,t=0,play=true;
+S.forEach((_,k)=>{const b=document.createElement('b');b.onclick=()=>go(k);dots.appendChild(b)});
+function go(n){timers.forEach(clearInterval);timers=[];i=(n+S.length)%S.length;t=0;st.innerHTML=S[i].draw();cap.textContent=S[i].sub;[...dots.children].forEach((d,k)=>d.className=k==i?'on':'');S[i].on&&S[i].on();st.classList.toggle('paused',!play)}
+setInterval(()=>{if(!play)return;t+=100;pb.style.width=(t/S[i].d*100)+'%';if(t>=S[i].d)go(i+1)},100);
+pp.onclick=()=>{play=!play;pp.textContent=play?'⏸ Pause':'▶ Play';st.classList.toggle('paused',!play);const s=st.querySelector('svg');s&&(play?s.unpauseAnimations():s.pauseAnimations())};
+prev.onclick=()=>go(i-1);next.onclick=()=>go(i+1);rep.onclick=()=>go(0);
+addEventListener('keydown',e=>{if(e.key=='ArrowRight')go(i+1);if(e.key=='ArrowLeft')go(i-1);if(e.key==' '){e.preventDefault();pp.click()}});
+go(0);
+</script></body></html>
