@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HydroShield — Animated Explainer</title>
+<style>
+:root{--bg:#eaf3f7;--fg:#0b1f3a;--btn:#0b1f3a;--btnfg:#e6f9ff;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#050d1a;--fg:#d9f3f9;--btn:#14b8a6;--btnfg:#04202a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#050d1a;--fg:#d9f3f9;--btn:#14b8a6;--btnfg:#04202a;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 Georgia,"Times New Roman",serif}
+main{max-width:960px;margin:0 auto;padding:16px}
+.stage{background:#0b1f3a;border-radius:14px;overflow:hidden;aspect-ratio:16/9}
+svg{display:block;width:100%;height:100%}
+.t{fill:#fff;font:600 14px system-ui,sans-serif;text-anchor:middle}
+.s{fill:#9fd8e6;font:11px system-ui,sans-serif;text-anchor:middle}
+.big{fill:#67e8f9;font:800 46px system-ui,sans-serif;text-anchor:middle;letter-spacing:6px}
+.sub{fill:#d9f3f9;font:16px system-ui,sans-serif;text-anchor:middle}
+.l{fill:#d9f3f9;font:13px system-ui,sans-serif;text-anchor:start}
+.dk{fill:#5b7a8c;font:10px system-ui,sans-serif;text-anchor:start}
+.dv{fill:#0b1f3a;font:700 20px system-ui,sans-serif;text-anchor:start}
+.dm{fill:#0b1f3a;font:600 11px system-ui,sans-serif;text-anchor:start}
+.nav{fill:#fff;font:600 14px system-ui,sans-serif;text-anchor:start}
+.pop{opacity:0;animation:in .6s forwards}
+.fade{animation:in .8s}
+.lit rect{animation:lit .5s var(--dl) forwards}
+.draw{stroke-dasharray:700;stroke-dashoffset:700;animation:dr 3s 1.5s forwards}
+@keyframes in{from{opacity:0}to{opacity:1}}
+@keyframes lit{to{fill:#0d9488}}
+@keyframes dr{to{stroke-dashoffset:0}}
+#cap{min-height:4.5em;margin:14px 2px 8px;font-size:17px}
+.ctl{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+button{background:var(--btn);color:var(--btnfg);border:0;border-radius:8px;padding:10px 16px;font:600 15px system-ui,sans-serif;cursor:pointer;min-height:44px}
+button:focus-visible{outline:3px solid #67e8f9;outline-offset:2px}
+.dots{display:flex;gap:6px;margin-left:auto}
+.dots button{min-height:0;width:14px;height:14px;padding:0;border-radius:50%;opacity:.35}
+.dots button.on{opacity:1}
+@media (prefers-reduced-motion:reduce){.pop,.fade,.lit rect,.draw{animation-duration:.01s;animation-delay:0s!important}animateMotion{display:none}}
+</style>
+</head>
+<body>
+<main>
+<div class="stage"><svg id="st" viewBox="0 0 800 450" role="img" aria-label="HydroShield animated explainer"></svg></div>
+<p id="cap" aria-live="polite"></p>
+<div class="ctl">
+<button id="pv" aria-label="Previous scene">Back</button>
+<button id="pp">Pause</button>
+<button id="nx" aria-label="Next scene">Next</button>
+<div class="dots" id="dots"></div>
+</div>
+</main>
+<script>
+const S=document.getElementById('st'),C=document.getElementById('cap'),D=document.getElementById('dots');
+let n=0,cur=0,playing=true,tm;
+const d=()=>`style="animation-delay:${(n++*.3).toFixed(1)}s"`;
+const T=(x,y,t,c)=>`<text class="${c||'t'} pop" ${d()} x="${x}" y="${y}">${t}</text>`;
+const B=(x,y,w,h,t,s,c)=>`<g class="pop" ${d()}><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="10" fill="#0f2c4d" stroke="${c||'#14b8a6'}" stroke-width="2"/><text class="t" x="${x+w/2}" y="${y+h/2+(s?-2:5)}">${t}</text>${s?`<text class="s" x="${x+w/2}" y="${y+h/2+14}">${s}</text>`:''}</g>`;
+const P=(a,b,c,e,k)=>`<line x1="${a}" y1="${b}" x2="${c}" y2="${e}" stroke="#1f6f8b" stroke-width="2" stroke-dasharray="4 4"/><circle r="5" fill="#67e8f9"><animateMotion dur="2.2s" begin="${k||0}s" repeatCount="indefinite" path="M${a} ${b}L${c} ${e}"/></circle>`;
+function city(glow){let s=glow?'<circle cx="400" cy="330" r="260" fill="url(#gl)"/>':'';
+for(let i=0;i<18;i++){const h=40+((i*37)%70),x=10+i*43;s+=`<rect x="${x}" y="${420-h}" width="36" height="${h}" fill="#16365c"/>`;
+for(let j=0;j<3;j++)if((i+j)%2==0)s+=`<rect x="${x+8+j*9}" y="${430-h+j*14}" width="6" height="6" fill="#fde68a" opacity=".8"/>`}
+return s+`<rect x="385" y="320" width="8" height="100" fill="#1f6f8b"/><rect x="407" y="320" width="8" height="100" fill="#1f6f8b"/><rect x="350" y="240" width="100" height="80" rx="10" fill="#0e7490" stroke="#67e8f9" stroke-width="2"/><rect x="340" y="230" width="120" height="14" rx="6" fill="#67e8f9"/>`}
+const nodes=['WATER TANK','SENSORS','ARDUINO UNO','NODEMCU ESP8266','WI-FI ROUTER','LAPTOP BACKEND','SQLITE DATABASE','DASHBOARD','SMARTPHONE'];
+function flow(){let s='';
+const pos=nodes.map((_,i)=>i<5?[20+i*152,110]:[96+(i-5)*152,270]);
+for(let i=0;i<8;i++){const[a,b]=pos[i],[c,e]=pos[i+1];
+s+=i==4?`<path d="M${a+70} ${b+50}V215H${c+70}V${e}" fill="none" stroke="#1f6f8b" stroke-width="2"/>`:`<line x1="${a+140}" y1="${b+25}" x2="${c}" y2="${e+25}" stroke="#1f6f8b" stroke-width="2"/>`}
+pos.forEach(([x,y],i)=>{s+=`<g class="lit" style="--dl:${(0.5+i*1.5).toFixed(1)}s"><rect x="${x}" y="${y}" width="140" height="50" rx="10" fill="#0f2c4d" stroke="#14b8a6" stroke-width="2"/><text class="t" x="${x+70}" y="${y+25}" style="font-size:12px">${i+1}</text><text class="t" x="${x+70}" y="${y+41}" style="font-size:11px">${nodes[i]}</text></g>`});
+return s+T(400,400,'Water → Sensors → Arduino → NodeMCU → Wi-Fi → Backend → Database → Dashboard → Phone','s')}
+const SC=[
+[()=>city()+T(400,100,'HYDROSHIELD','big')+T(400,140,'IoT-Based Water Quality Monitoring System','sub'),'A miniature smart city with a municipal water tank. Sensors can monitor the water, and the measurements can be viewed on a website.'],
+[()=>`<rect x="40" y="120" width="150" height="200" rx="8" fill="none" stroke="#67e8f9" stroke-width="3"/><rect x="43" y="190" width="144" height="127" fill="#0e7490" opacity=".7"/><rect x="100" y="80" width="30" height="40" fill="#1f6f8b"/><circle cx="115" cy="95" r="4" fill="#67e8f9"><animate attributeName="cy" values="95;190" dur="1.6s" repeatCount="indefinite"/></circle>`+T(115,345,'MUNICIPAL WATER TANK','s')+P(190,160,260,118)+P(190,220,260,208,.4)+P(190,280,260,298,.8)+B(260,90,170,56,'TDS SENSOR','Measures dissolved solids')+B(260,180,170,56,'TURBIDITY SENSOR','Estimates water clarity')+B(260,270,170,56,'TEMPERATURE SENSOR','Measures water temperature')+`<rect x="500" y="80" width="270" height="270" rx="12" fill="none" stroke="#67e8f9" stroke-dasharray="6 5"/>`+T(635,102,'WEATHER-PROTECTED ENCLOSURE','s')+B(530,130,210,56,'ARDUINO UNO','Reads sensor signals')+B(530,260,210,56,'NODEMCU ESP8266','Wi-Fi transmitter')+P(635,186,635,260)+`<path d="M430 118H480V158H530M430 208H480V158M430 298H480V158" fill="none" stroke="#9fd8e6" stroke-width="1.5"/>`,'Three sensors in a sampling chamber measure dissolved solids, water clarity and temperature. An Arduino Uno and a NodeMCU sit in a protected enclosure, not in the water.'],
+[()=>B(30,70,210,60,'TDS','245 ppm')+B(30,180,210,60,'TURBIDITY','Sensor reading detected')+B(30,290,210,60,'TEMPERATURE','26.5 °C')+P(240,100,330,190)+P(240,210,330,205,.4)+P(240,320,330,225,.8)+B(330,170,170,70,'ARDUINO UNO','collects readings')+P(500,205,580,205)+T(540,190,'Serial')+B(580,170,190,70,'NODEMCU ESP8266','builds a Wi-Fi packet')+T(400,400,'SENSORS → ARDUINO UNO → NODEMCU ESP8266','sub')+T(400,425,'Illustrative example values only','s'),'Electrical signals reach the Arduino, which organizes the readings and passes them to the NodeMCU over a serial link. Only data travels along the wires.'],
+[()=>[0,.8,1.6].map(k=>`<circle cx="110" cy="205" r="10" fill="none" stroke="#67e8f9"><animate attributeName="r" values="10;90" dur="2.4s" begin="${k}s" repeatCount="indefinite"/><animate attributeName="opacity" values="1;0" dur="2.4s" begin="${k}s" repeatCount="indefinite"/></circle>`).join('')+B(30,170,160,70,'NODEMCU','ESP8266')+P(190,205,320,205)+B(320,170,150,70,'WI-FI ROUTER','local network')+P(470,205,600,205,.7)+B(600,170,170,70,'LAPTOP','Node.js backend')+T(400,340,'NODEMCU ESP8266 → WI-FI NETWORK → LAPTOP BACKEND','sub')+T(400,370,'Local network only: no satellite, no mobile tower, no public internet','s'),'The NodeMCU sends the readings over Wi-Fi to a nearby router, which passes them across the local network to the backend running on the laptop.'],
+[()=>`<rect x="60" y="30" width="680" height="320" rx="14" fill="#0a1a30" stroke="#67e8f9" stroke-width="2"/><rect x="30" y="350" width="740" height="14" rx="7" fill="#16365c"/>`+P(10,100,100,100)+B(100,70,180,60,'NODE.JS + EXPRESS','BACKEND')+P(280,100,310,100)+B(310,70,180,60,'DATA VALIDATION')+P(490,100,520,100)+B(520,70,190,60,'SQLITE DATABASE')+`<rect x="200" y="170" width="400" height="150" rx="10" fill="#0f2c4d" stroke="#14b8a6"/>`+T(220,198,'Device: HydroShield-Node-01','l')+T(220,222,'TDS: 245 ppm','l')+T(220,246,'Temperature: 26.5 °C','l')+T(220,270,'Turbidity: raw sensor reading','l')+T(220,294,'Received: example timestamp','l')+T(400,400,'DATA RECEIVED → VALIDATED → STORED','sub'),'The Node.js and Express backend validates every reading and stores it, with a timestamp, in a SQLite database on the laptop.'],
+[()=>`<rect x="40" y="30" width="520" height="370" rx="12" fill="#eef6fa"/><rect x="40" y="30" width="520" height="44" rx="12" fill="#0b1f3a" stroke="#14b8a6"/>`+T(56,58,'HydroShield — Water Quality Monitoring','nav')+`<circle cx="430" cy="52" r="5" fill="#22c55e"/><text class="nav" x="442" y="57" style="font-size:11px">DEVICE ONLINE</text>`+[['TDS','245 ppm'],['TURBIDITY','Reading in'],['TEMPERATURE','26.5 °C']].map((c,i)=>`<g class="pop" ${d()}><rect x="${56+i*168}" y="88" width="152" height="70" rx="8" fill="#fff"/><text class="dk" x="${68+i*168}" y="110">${c[0]}</text><text class="dv" x="${68+i*168}" y="140">${c[1]}</text></g>`).join('')+`<rect x="56" y="172" width="488" height="150" rx="8" fill="#fff"/><polyline class="draw" points="70,300 130,270 190,285 250,240 310,255 370,215 430,230 490,200 530,208" fill="none" stroke="#14b8a6" stroke-width="3"/>`+T(56,342,'Latest reading received: example timestamp','dk')+T(56,372,'For monitoring and educational purposes. These parameters alone cannot','dk')+T(56,386,'establish whether water is safe to drink.','dk')+`<rect x="610" y="50" width="140" height="310" rx="20" fill="#0b1f3a" stroke="#67e8f9" stroke-width="2"/><rect x="620" y="76" width="120" height="260" rx="8" fill="#eef6fa"/>`+[['TDS 245 ppm',96],['Turbidity: raw',140],['Temp 26.5 °C',184]].map(c=>`<rect x="628" y="${c[1]}" width="104" height="36" rx="6" fill="#fff"/><text class="dm" x="636" y="${c[1]+22}">${c[0]}</text>`).join('')+`<polyline points="632,300 660,280 685,290 710,262 728,268" fill="none" stroke="#14b8a6" stroke-width="2"/>`+T(680,385,'Same Wi-Fi network','s'),'The dashboard fetches the latest readings through the backend and charts the history. It opens on a laptop or a phone connected to the same Wi-Fi.'],
+[flow,'The complete path: water tank, sensors, Arduino, NodeMCU, router, laptop backend, database, dashboard and smartphone. Each stage lights up as the data arrives.'],
+[()=>city(1)+T(400,70,'HYDROSHIELD','big')+T(400,105,'Smarter Monitoring. Better Water Awareness.','sub')+T(400,135,'IoT-Based Water Quality Monitoring System','s')+T(400,165,'Measure • Transmit • Store • Monitor','sub'),'HydroShield: measure, transmit, store and monitor, all within a local network.']
+];
+const DUR=[11,15,15,14,14,18,20,10];
+function show(i){cur=i;n=0;S.innerHTML='<defs><radialGradient id="gl"><stop offset="0" stop-color="#14b8a6" stop-opacity=".5"/><stop offset="1" stop-color="#14b8a6" stop-opacity="0"/></radialGradient></defs><g class="fade">'+SC[i][0]()+'</g>';
+C.textContent=SC[i][1];[...D.children].forEach((b,k)=>b.className=k==i?'on':'');
+clearTimeout(tm);if(playing)tm=setTimeout(()=>show((i+1)%SC.length),DUR[i]*1000)}
+SC.forEach((_,i)=>{const b=document.createElement('button');b.setAttribute('aria-label','Scene '+(i+1));b.onclick=()=>show(i);D.appendChild(b)});
+document.getElementById('pv').onclick=()=>show((cur+SC.length-1)%SC.length);
+document.getElementById('nx').onclick=()=>show((cur+1)%SC.length);
+document.getElementById('pp').onclick=e=>{playing=!playing;e.target.textContent=playing?'Pause':'Play';show(cur)};
+show(0);
+</script>
+</body>
+</html>
