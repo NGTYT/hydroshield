@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HydroShield: 3D Explainer</title>
+<style>
+:root{--bg:#e6f1f6;--ink:#10303f;--card:rgba(255,255,255,.94);--ac:#0a7ea4;--lb:rgba(255,255,255,.93);color-scheme:light dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b1a22;--ink:#e3f1f7;--card:rgba(14,32,42,.94);--ac:#4cc3e8;--lb:rgba(14,32,42,.93)}}
+:root[data-theme="dark"]{--bg:#0b1a22;--ink:#e3f1f7;--card:rgba(14,32,42,.94);--ac:#4cc3e8;--lb:rgba(14,32,42,.93)}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px)}
+body{height:100%;margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
+#app{position:relative;height:100%;overflow:hidden}
+canvas{display:block;position:absolute;inset:0;touch-action:none;cursor:grab}
+.lb{position:absolute;transform:translate(-50%,-100%);background:var(--lb);color:var(--ink);padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap;pointer-events:none;border:1px solid var(--ac);display:none}
+.lb.p{font-size:10px;padding:0 5px;border-radius:4px;border-color:#8a99a2;font-weight:500}
+#hd{position:absolute;top:10px;left:14px;right:14px;font-weight:700;font-size:16px;pointer-events:none}
+#hd small{display:block;font-weight:400;opacity:.75;font-size:11px}
+#card{position:absolute;left:10px;right:10px;bottom:10px;max-width:660px;margin:0 auto;background:var(--card);border-radius:14px;padding:12px 16px;box-shadow:0 6px 28px rgba(0,0,0,.28)}
+#card h2{margin:0 0 4px;font-size:17px;color:var(--ac)}
+#card p{margin:0 0 10px;max-width:70ch}
+#ctl{display:flex;gap:8px;align-items:center}
+button{font:inherit;font-weight:600;border:0;border-radius:8px;padding:6px 14px;background:var(--ac);color:#fff;cursor:pointer}
+button:focus-visible,.d:focus-visible{outline:3px solid #f5a623;outline-offset:2px}
+#dots{flex:1;display:flex;gap:6px;justify-content:center}
+.d{width:10px;height:10px;border-radius:50%;background:#7f9aa6;opacity:.45;cursor:pointer;border:0;padding:0}
+.d.on{background:var(--ac);opacity:1}
+#jp{position:absolute;top:56px;right:10px;width:min(330px,calc(100% - 20px));display:none;background:var(--card);border-radius:12px;padding:10px 12px;font-size:12.5px;box-shadow:0 4px 20px rgba(0,0,0,.25)}
+#jp pre{margin:6px 0;font:12px/1.4 ui-monospace,Consolas,monospace;white-space:pre-wrap;word-break:break-all}
+#jp h3{margin:0;font-size:15px}
+</style></head><body>
+<div id="app">
+<div id="hd">HydroShield: smart IoT water quality monitor<small>Drag to rotate. Readings are simulated for demonstration.</small></div>
+<div id="jp"></div><div id="card"><h2 id="tt"></h2><p id="tx"></p><div id="ctl"><button id="pv" aria-label="Previous step">Back</button><button id="pl">Pause</button><button id="nx" aria-label="Next step">Next</button><div id="dots"></div></div></div>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const T=THREE,app=document.getElementById('app');
+const ren=new T.WebGLRenderer({antialias:true,alpha:true});ren.setPixelRatio(Math.min(devicePixelRatio,2));app.prepend(ren.domElement);
+const scene=new T.Scene(),cam=new T.PerspectiveCamera(40,1,.1,200);
+scene.add(new T.HemisphereLight(0xffffff,0x7a8a94,.95));
+const sun=new T.DirectionalLight(0xffffff,.8);sun.position.set(6,14,8);scene.add(sun);
+const M=(c,o)=>new T.MeshStandardMaterial(Object.assign({color:c,roughness:.55,metalness:.1},o));
+const V=(x,y,z)=>new T.Vector3(x,y,z);
+const G=(x,y,z,p)=>{const g=new T.Group();g.position.set(x,y,z);(p||scene).add(g);return g};
+const bx=(w,h,d,c,x,y,z,p,o)=>{const m=new T.Mesh(new T.BoxGeometry(w,h,d),M(c,o));m.position.set(x,y,z);(p||scene).add(m);return m};
+const cy=(r,h,c,x,y,z,p,o)=>{const m=new T.Mesh(new T.CylinderGeometry(r,r,h,20),M(c,o));m.position.set(x,y,z);(p||scene).add(m);return m};
+const ground=new T.Mesh(new T.CircleGeometry(40,48),M(0xdbe8ef,{roughness:1}));ground.rotation.x=-Math.PI/2;ground.position.y=-.02;scene.add(ground);
+const dk=matchMedia('(prefers-color-scheme:dark)');const th=()=>ground.material.color.set(dk.matches?0x1a2d38:0xdbe8ef);th();dk.addEventListener('change',th);
+
+/* ---------- readings (simulated) ---------- */
+const R={ph:7.2,tds:184,ntu:2.1,t:26.4};
+let fail=false;const SC=[[7.2,280,1.5,0],[8.8,620,6.5,0],[9.6,1100,14,0],[7.2,280,1.5,1]];
+const updR=t=>{R.ph=7.2+.04*Math.sin(t*.6);R.tds=280+4*Math.sin(t*.45+1);R.ntu=1.5+.1*Math.sin(t*.8+2);R.t=28.5+.1*Math.sin(t*.3);fail=false;if(step===8){const s=SC[Math.floor(sT/4)%4];R.ph=s[0];R.tds=s[1];R.ntu=s[2];fail=!!s[3]}};
+const stat=()=>{if(fail||isNaN(R.ph))return['SENSOR ERROR','#ff5a5a'];if(R.ph<6||R.ph>9||R.tds>900||R.ntu>10)return['NOT SAFE','#ff5a5a'];if(R.ph<6.5||R.ph>8.5||R.tds>500||R.ntu>5)return['CAUTION','#ffc233'];return['SAFE','#3ddc84']};
+
+/* ---------- labels ---------- */
+const labs=[];
+function L(txt,x,y,z,a,b,cls,f){const e=document.createElement('div');e.className='lb '+(cls||'');e.textContent=txt;app.appendChild(e);labs.push({e,p:V(x,y,z),a,b,f})}
+
+/* ---------- water tank with flow ---------- */
+const tank=G(-7,0,-2.5);
+const glass=new T.Mesh(new T.BoxGeometry(6,2.6,3),new T.MeshPhongMaterial({color:0xbfe6f5,transparent:true,opacity:.14,depthWrite:false}));glass.position.y=1.3;tank.add(glass);
+const ed=new T.LineSegments(new T.EdgesGeometry(glass.geometry),new T.LineBasicMaterial({color:0x5aa9c4}));ed.position.y=1.3;tank.add(ed);
+const water=new T.Mesh(new T.BoxGeometry(5.9,2,2.9),new T.MeshPhongMaterial({color:0x2aa6d6,transparent:true,opacity:.36,depthWrite:false}));water.position.y=1.02;tank.add(water);
+cy(.28,1.2,0xb0b8c0,-3.4,1.2,0,tank).rotation.z=Math.PI/2;cy(.28,1.2,0xb0b8c0,3.4,1.2,0,tank).rotation.z=Math.PI/2;
+const N=280,pp=new Float32Array(N*3);for(let i=0;i<N;i++){pp[i*3]=(Math.random()-.5)*5.8;pp[i*3+1]=.15+Math.random()*1.8;pp[i*3+2]=(Math.random()-.5)*2.7}
+const pg=new T.BufferGeometry();pg.setAttribute('position',new T.BufferAttribute(pp,3));
+tank.add(new T.Points(pg,new T.PointsMaterial({color:0xffffff,size:.07,transparent:true,opacity:.85})));
+
+/* ---------- sensors ---------- */
+const sx={ph:-2.2,tds:-.9,ntu:.4,tmp:1.7};
+cy(.16,2.4,0xcfd6dc,sx.ph,1.8,0,tank);cy(.19,.3,0x222222,sx.ph,3.05,0,tank);
+const bulb=new T.Mesh(new T.SphereGeometry(.2,16,12),M(0xdff4ff,{transparent:true,opacity:.75}));bulb.position.set(sx.ph,.55,0);tank.add(bulb);
+cy(.17,2.3,0xf2f2f2,sx.tds,1.85,0,tank);cy(.03,.6,0xc0c0c0,sx.tds-.07,.4,0,tank);cy(.03,.6,0xc0c0c0,sx.tds+.07,.4,0,tank);cy(.2,.25,0x222222,sx.tds,3.05,0,tank);
+cy(.1,1.8,0x333333,sx.ntu,2.0,0,tank);bx(.3,.15,1.2,0x333333,sx.ntu,1.1,0,tank);bx(.18,.4,.18,0xeeeeee,sx.ntu,.85,-.5,tank);bx(.18,.4,.18,0xeeeeee,sx.ntu,.85,.5,tank);
+const beam=new T.Mesh(new T.CylinderGeometry(.045,.045,.8,10),new T.MeshBasicMaterial({color:0xffc233,transparent:true,opacity:.4}));beam.rotation.x=Math.PI/2;beam.position.set(sx.ntu,.85,0);tank.add(beam);
+cy(.07,2.2,0xaab4bc,sx.tmp,1.9,0,tank,{metalness:.8,roughness:.3});cy(.04,.3,0x111111,sx.tmp,3.15,0,tank);
+
+/* ---------- interface modules ---------- */
+function mod(x,c,w,d,bnc){const g=G(x,0,2.4);bx(w,.1,d,c,0,.15,0,g);bx(.5,.14,.5,0x111111,.1,.25,0,g);bx(.3,.22,.3,0x2a6fe0,-.3,.3,.3,g);if(bnc)cy(.22,.7,0xc9ced3,-w/2-.1,.4,0,g).rotation.z=Math.PI/2;else bx(.5,.2,.3,0xf0f0f0,0,.3,-d/2+.2,g)}
+mod(-9.3,0x1d5fa8,2,1.5,true);mod(-7.3,0x1f8a4c,1.7,1.3);mod(-5.4,0x167a7a,1.7,1.3);
+
+/* ---------- breadboard + pull-up resistor ---------- */
+const bc=document.createElement('canvas');bc.width=512;bc.height=320;const q=bc.getContext('2d');
+q.fillStyle='#f1ece0';q.fillRect(0,0,512,320);q.fillStyle='#d33';q.fillRect(14,24,484,3);q.fillRect(14,292,484,3);q.fillStyle='#27c';q.fillRect(14,36,484,3);q.fillRect(14,280,484,3);
+q.fillStyle='#bbb2a0';q.fillRect(14,150,484,20);q.fillStyle='#3a3a3a';
+for(let x=24;x<500;x+=14)for(const y of [14,48,62,76,90,104,118,132,188,202,216,230,244,258,300])q.fillRect(x,y,5,5);
+const bt=new T.CanvasTexture(bc),bm=()=>M(0xf1ece0),bb=new T.Mesh(new T.BoxGeometry(4.2,.3,2.7),[bm(),bm(),M(0xffffff,{map:bt}),bm(),bm(),bm()]);bb.position.set(-1.5,.15,1.6);scene.add(bb);
+bx(.5,.1,.14,0xd8b27a,-.9,.35,1.1);
+
+/* ---------- Arduino Uno ---------- */
+const ard=G(3.8,0,1.2);bx(3.4,.12,2.6,0x00878f,0,.12,0,ard);bx(.8,.4,.9,0xc4c8cc,-1.45,.3,-.5,ard);bx(.7,.3,.6,0x111111,-1.5,.25,.7,ard);
+bx(2.6,.2,.12,0x111111,.3,.28,-1.2,ard);bx(2.6,.2,.12,0x111111,.3,.28,1.2,ard);bx(1.5,.15,.4,0x111111,.1,.25,.1,ard);cy(.1,.1,0xcc2222,-.6,.2,-.7,ard);
+/* ---------- NodeMCU ---------- */
+const nm=G(4.2,0,-2.4);bx(2.6,.08,1.3,0x151c22,0,.1,0,nm);bx(.9,.09,.8,0xc0c4c8,.8,.16,0,nm);bx(.35,.04,.6,0xd4a017,1.15,.14,0,nm);bx(.45,.18,.4,0xb0b4b8,-1.3,.16,0,nm);
+bx(2.2,.14,.1,0x111111,-.1,.17,.55,nm);bx(2.2,.14,.1,0x111111,-.1,.17,-.55,nm);
+bx(1,.06,.6,0xf1ece0,3.8,.1,-.95);bx(.5,.1,.14,0xd8b27a,3.7,.2,-.85);bx(.5,.1,.14,0xd8b27a,3.9,.2,-1.05);
+
+/* ---------- LCD, dashboard, router ---------- */
+function tex(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return{c,x:c.getContext('2d'),t:new T.CanvasTexture(c)}}
+const dash=tex(512,300);
+const mon=G(9.2,0,-3.4);mon.rotation.y=-.35;bx(1.6,.1,1,0x333333,0,.05,0,mon);bx(.25,1,.2,0x333333,0,.6,0,mon);bx(4.4,2.8,.2,0x14181c,0,2.4,0,mon);
+const ds=new T.Mesh(new T.PlaneGeometry(4,2.34),new T.MeshBasicMaterial({map:dash.t}));ds.position.set(0,2.4,.11);mon.add(ds);
+const rt=G(6.8,0,-6.5);bx(1.4,.25,.9,0xeeeeee,0,.15,0,rt);cy(.04,.9,0x222222,-.45,.8,0,rt);cy(.04,.9,0x222222,.45,.8,0,rt);
+bx(2,.12,.8,0x2b3a44,6.6,.06,.6);const leds=[0x22c55e,0xfacc15,0xef4444].map((c,i)=>{const m=new T.Mesh(new T.SphereGeometry(.22,16,12),new T.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:0}));m.position.set(6+i*.6,.3,.6);scene.add(m);return m});
+const wg=G(5.4,.5,-2.4);wg.rotation.y=Math.atan2(4.1,1.5);const rings=[0,1,2].map(()=>{const m=new T.Mesh(new T.RingGeometry(.92,1,32,1,-.7,1.4),new T.MeshBasicMaterial({color:0x14a5d6,transparent:true,side:T.DoubleSide}));m.rotation.x=-Math.PI/2;wg.add(m);return m});
+const c1=new T.CatmullRomCurve3([V(5.4,.5,-2.4),V(6.2,1.8,-4.4),V(6.8,1.1,-6.5)]),c2=new T.CatmullRomCurve3([V(6.8,1.1,-6.5),V(8,2.2,-5.2),V(8.7,2.3,-3.7)]);
+const pk=[0,1,2].map(()=>{const m=new T.Mesh(new T.SphereGeometry(.14,12,10),new T.MeshBasicMaterial({color:0xffb020}));scene.add(m);return m});
+
+/* ---------- wires ---------- */
+const wires=[];
+function W(a,b,col,step,lift,r){const mid=a.clone().add(b).multiplyScalar(.5);mid.y+=lift;
+const c=new T.CatmullRomCurve3([a,V(a.x,a.y+.5,a.z),mid,V(b.x,b.y+.5,b.z),b]);const g=new T.TubeGeometry(c,48,r||.045,6);
+const m=new T.Mesh(g,M(col,{roughness:.4}));scene.add(m);const pl=new T.Mesh(new T.SphereGeometry(.1,10,8),new T.MeshBasicMaterial({color:0xffffff}));scene.add(pl);
+wires.push({c,g,m,pl,step,p:0,n:g.index.count,o:Math.random()})}
+const DB=V(-.9,.4,1.2);
+W(V(-9.2,3.2,-2.5),V(-10.3,.5,2.4),0x222222,2,1.6,.06);W(V(-7.9,3.2,-2.5),V(-7.3,.3,1.75),0x222222,2,1.4,.06);W(V(-6.6,3.1,-2.5),V(-5.4,.3,1.75),0x222222,2,1.2,.06);
+W(V(-5.3,3.3,-2.5),DB,0x333333,3,2.2,.05);
+/* analog outputs go straight to the Arduino's own analog pins A0-A2 */
+W(V(-8.7,.25,3.15),V(4.2,.4,2.4),0x2d6cdf,3,2.2);W(V(-6.9,.25,3.05),V(4.5,.4,2.4),0x2fa84f,3,1.7);W(V(-5,.25,3),V(4.8,.4,2.4),0xf08a24,3,1.2);
+W(V(-.2,.35,2.8),V(3.2,.35,2.4),0xd32020,3,.8);W(V(-.4,.35,2.8),V(3.5,.35,2.4),0x111111,3,.5);
+W(DB,V(3,.35,0),0x13a8a8,3,1);
+W(V(4.2,.4,0),V(3.8,.3,-.95),0xe83e8c,6,.4);W(V(3.8,.3,-1.05),V(3.4,.25,-1.85),0xe83e8c,6,.4);W(V(3.6,.4,0),V(3,.25,-1.85),0x111111,6,.6);
+
+/* ---------- labels ---------- */
+const Lc=(t,x,y,z,a,b,f)=>L(t,x,y,z,a,b||10,'',f);
+Lc('Arduino Uno (10-bit ADC)',3.8,1.5,1.2,0);Lc('NodeMCU ESP8266',4.2,1,-2.4,0);Lc('Breadboard',-1.5,.9,2.9,0);
+Lc('pH probe',-9.2,3.7,-2.5,0,0,()=>step>=1?'pH probe: '+R.ph.toFixed(2):'pH probe');
+Lc('TDS probe',-7.9,3.7,-2.5,0,0,()=>step>=1?'TDS probe: '+R.tds.toFixed(0)+' ppm':'TDS probe');
+Lc('Turbidity sensor',-6.6,3.6,-2.5,0,0,()=>step>=1?'Turbidity: '+R.ntu.toFixed(1)+' NTU':'Turbidity sensor');
+Lc('DS18B20 probe',-5.3,3.8,-2.5,0,0,()=>step>=1?'DS18B20: '+R.t.toFixed(1)+' °C':'DS18B20 probe');
+Lc('pH interface module',-9.3,.9,2.4,0);Lc('TDS interface module',-7.3,.9,2.4,0);Lc('Turbidity module',-5.4,.9,2.4,0);
+Lc('PC dashboard',9.2,4.2,-3.4,0);Lc('Wi-Fi router',6.8,1.7,-6.5,0);Lc('Water flow →',-10.3,2.2,-2.5,0,2);Lc('Status LEDs: green, yellow, red',6.6,.9,.6,0);
+const P=(t,x,y,z,a,b)=>L(t,x,y,z,a,b,'p');
+P('4.7 kΩ pull-up',-.9,.8,1.1,3,5);P('D2',3,.8,0,3,5);P('A0 (pH)',4.2,.9,2.4,3,5);P('A1 (TDS)',4.5,1.2,2.4,3,5);P('A2 (NTU)',4.8,.9,2.4,3,5);P('5V',3.1,.8,2.4,3,5);P('GND',3.55,1.1,2.4,3,5);
+P('D3 (TX)',4.2,.8,0,6,7);P('D6 (RX)',3.3,.7,-1.85,6,7);P('Divider 5 V → 3.3 V',3.8,.7,-.95,6,7);
+
+/* ---------- steps ---------- */
+const S=[
+['The system at a glance','Four sensors sit in flowing water. Their signals pass through interface modules straight into an Arduino Uno, which converts them to readings and sends them to a NodeMCU ESP8266. The NodeMCU forwards them over Wi-Fi to the backend and dashboard.',[0,1,0,22,.25,.5]],
+['Sensors measure the water','pH: a glass electrode makes a tiny voltage, about 59 mV per pH unit at 25 °C. TDS: the probe measures electrical conductivity, shown as ppm. Turbidity: light crosses from an LED to a detector, and cloudier water scatters more of it (NTU). DS18B20: a digital chip that reports temperature.',[-7,1.4,-2.5,10,.35,.22]],
+['Interface modules prepare the signals','A pH probe’s millivolts are too small to read directly, so its module amplifies them to a 0–5 V signal. The TDS and turbidity modules also output analog voltages. Only the DS18B20 is already digital.',[-6.5,1,.5,12,.1,.45]],
+['Wiring to the Arduino','The three analog outputs go directly to Arduino pins A0 (pH), A1 (TDS) and A2 (turbidity). The DS18B20 data wire has a 4.7 kΩ pull-up resistor and runs to pin D2. Everything shares 5 V and ground.',[2,.5,1.6,15,.15,.6]],
+['The Arduino’s built-in ADC','Each analog pin feeds the Uno’s own 10-bit ADC, so readings are 0–1023. With the default 5 V reference, one step is about 4.9 mV. Averaging several samples per reading reduces noise. Module outputs must stay between 0 and 5 V.',[4,.5,1.5,9,.2,.55]],
+['Arduino converts and packs the data','The Arduino turns counts into volts, then into pH, TDS (ppm) and turbidity (NTU) with calibration formulas. It corrects TDS for temperature (about 2 % per °C), picks a status, and packs one reading into a single JSON line. The calibration equations must match your exact sensor modules.',[5.5,.5,1.5,10,.3,.5]],
+['Serial JSON to the NodeMCU','Once per reading, the Arduino sends one JSON line ending in a newline, at 9600 baud from D3. The NodeMCU reads a full line, checks that it parses, and forwards it unchanged to the backend. ESP8266 GPIO uses 3.3 V logic: never apply 5 V directly to its pins. A voltage divider or level shifter sits between Arduino TX and NodeMCU RX, with a shared ground.',[5.5,1,-2.8,10,-.1,.6]],
+['Live dashboard','This is an illustrative layout, not your live site, and no backend connection is claimed. Each value gets a status from configurable thresholds. These four readings alone do not certify drinking-water safety.',[8.6,1.8,-1.8,9.5,-.35,.3]],
+['Status: safe, caution or not safe','Green means every reading is inside its configured normal range. Yellow means a reading entered a warning range. Red means a limit was exceeded. A failed or invalid sensor never counts as SAFE. These thresholds are examples to configure for your application.',[7.5,1,.8,11,-.05,.4]],
+['Automatic reporting every 10 minutes','The reporting interval is a software setting. Readings are checked before upload. If Wi-Fi drops, the NodeMCU keeps trying to reconnect and then resends the stored reading, so a failed upload is retried rather than ignored.',[5.5,1.2,-3.5,13,-.2,.55]],
+['HydroShield','Smart IoT water quality monitoring system. Measure, monitor, connect.',[1,1.2,-.5,26,.6,.4]]];
+const PN={4:'<h3>Arduino ADC</h3><pre>counts = analogRead(A0); // 0–1023\nvolts  = counts × 5.0 / 1023.0</pre><div>10 bits, 5 V reference: about 4.9 mV per step. Average several reads per channel.</div>',
+6:'<h3>Serial line (Arduino → NodeMCU)</h3><pre>{"ph":7.20,"tds":280,"turbidity":1.50,"temperature":28.5,"status":"SAFE"}\\n</pre><div>Demo data only. The newline marks the end of each reading. The NodeMCU would POST this same JSON to your website’s configured backend API. No endpoint is assumed here: the site needs a working endpoint and matching authentication.</div>',
+9:'<h3>Reporting timeline</h3><pre>00:00 sensors measure\n00:10 monitoring continues\n10:00 record uploaded\n20:00 record uploaded\n30:00 charts updated</pre><div>The interval is configurable. If Wi-Fi is lost: reconnect, then retry the upload.</div>',10:'<h3>HYDROSHIELD</h3><div>SMART IoT WATER QUALITY MONITORING SYSTEM</div><div><b>MEASURE • MONITOR • CONNECT</b></div><div>hydroshield2.vercel.app</div>'};
+let step=0,play=true,sT=0,drag={y:0,p:0};const DUR=15;
+const cur={tx:0,ty:1,tz:0,d:22,yaw:.25,pitch:.5},K=['tx','ty','tz','d','yaw','pitch'];
+const $=id=>document.getElementById(id),dots=$('dots');
+S.forEach((s,i)=>{const b=document.createElement('button');b.className='d';b.setAttribute('aria-label','Step '+(i+1)+': '+s[0]);b.onclick=()=>go(i);dots.appendChild(b)});
+function go(n){step=(n+S.length)%S.length;sT=0;drag={y:0,p:0};$('tt').textContent=(step+1)+'. '+S[step][0];$('tx').textContent=S[step][1];
+[...dots.children].forEach((d,i)=>d.classList.toggle('on',i===step));const pn=PN[step];$('jp').style.display=pn?'block':'none';$('jp').innerHTML=pn||''}
+$('pv').onclick=()=>go(step-1);$('nx').onclick=()=>go(step+1);$('pl').onclick=()=>{play=!play;$('pl').textContent=play?'Pause':'Play'};
+addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(step+1);if(e.key==='ArrowLeft')go(step-1)});
+let dn=null;const cv=ren.domElement;
+cv.onpointerdown=e=>{dn=[e.clientX,e.clientY];cv.setPointerCapture(e.pointerId)};cv.onpointerup=()=>dn=null;
+cv.onpointermove=e=>{if(!dn)return;drag.y-=(e.clientX-dn[0])*.006;drag.p=Math.max(-.4,Math.min(.5,drag.p+(e.clientY-dn[1])*.004));dn=[e.clientX,e.clientY]};
+function size(){ren.setSize(app.clientWidth,app.clientHeight);cam.aspect=app.clientWidth/app.clientHeight;cam.updateProjectionMatrix()}
+addEventListener('resize',size);size();go(0);K.forEach((k,i)=>cur[k]=S[0][2][i]);
+
+/* ---------- screens ---------- */
+function screens(){
+const [sn,sc]=stat();
+const d=dash.x;d.fillStyle='#10202a';d.fillRect(0,0,512,300);d.fillStyle='#e3f1f7';d.font='bold 22px system-ui';d.fillText('HydroShield',20,38);
+if(step<7){d.font='18px system-ui';d.fillText('No data yet',20,100)}else{d.font='20px system-ui';[['pH',R.ph.toFixed(2)],['TDS',R.tds.toFixed(0)+' ppm'],['Turbidity',R.ntu.toFixed(1)+' NTU'],['Temp',R.t.toFixed(1)+' °C']].forEach((r,i)=>{d.fillStyle='#8fb3c4';d.fillText(r[0],30+(i%2)*240,90+Math.floor(i/2)*70);d.fillStyle='#e3f1f7';d.fillText(r[1],30+(i%2)*240,120+Math.floor(i/2)*70)});d.fillStyle=sc;d.font='bold 30px system-ui';d.fillText(sn,30,260)}
+dash.t.needsUpdate=true}
+
+/* ---------- loop ---------- */
+const clk=new T.Clock();let t=0;const pv=V(0,0,0);
+function frame(){requestAnimationFrame(frame);const dt=Math.min(clk.getDelta(),.05);t+=dt;if(play){sT+=dt;if(sT>DUR&&step<S.length-1)go(step+1)}
+updR(t);const tg=S[step][2],k=Math.min(1,dt*3);K.forEach((n,i)=>cur[n]+=(tg[i]-cur[n])*k);
+const yw=cur.yaw+drag.y+(play?Math.sin(t*.15)*.12:0),pt=cur.pitch+drag.p;
+cam.position.set(cur.tx+cur.d*Math.sin(yw)*Math.cos(pt),cur.ty+cur.d*Math.sin(pt),cur.tz+cur.d*Math.cos(yw)*Math.cos(pt));cam.lookAt(cur.tx,cur.ty,cur.tz);
+for(let i=0;i<N;i++){pp[i*3]+=dt*.7;if(pp[i*3]>2.9)pp[i*3]=-2.9}pg.attributes.position.needsUpdate=true;
+beam.material.opacity=.3+.2*Math.sin(t*5);
+wires.forEach(w=>{w.p+=((step>=w.step?1:0)-w.p)*Math.min(1,dt*2);w.g.setDrawRange(0,Math.floor(w.n*w.p/3)*3);w.m.visible=w.p>.01;w.pl.visible=w.p>.98;if(w.pl.visible)w.pl.position.copy(w.c.getPoint((t*.4+w.o)%1))});
+rings.forEach((r,i)=>{const s=(t*.5+i/3)%1;r.visible=step>=6;r.scale.setScalar(.5+s*2.5);r.material.opacity=(1-s)*.6});
+pk.forEach((m,i)=>{const u=(t*.25+i/3)%1;m.visible=step>=6;m.position.copy(u<.5?c1.getPoint(u*2):c2.getPoint(u*2-1))});
+const sc=stat()[0];leds.forEach((l,i)=>{const on=step>=5&&((sc==='SAFE'&&i===0)||(sc==='CAUTION'&&i===1)||(sc!=='SAFE'&&sc!=='CAUTION'&&i===2));l.material.emissiveIntensity=on?1.2:0});
+screens();
+const w=app.clientWidth,h=app.clientHeight;
+labs.forEach(l=>{const vis=step>=l.a&&step<=l.b;pv.copy(l.p).project(cam);if(!vis||pv.z>1){l.e.style.display='none';return}
+if(l.f)l.e.textContent=l.f();l.e.style.display='block';l.e.style.left=(pv.x*.5+.5)*w+'px';l.e.style.top=(-pv.y*.5+.5)*h+'px'});
+ren.render(scene,cam)}
+frame();
+</script></body></html>
